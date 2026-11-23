@@ -1,0 +1,66 @@
+name: LaTeX PDFs and editor site
+
+# Compiles every top-level latex/*.tex file to PDF and publishes the editor
+# site (site/) together with the PDFs to GitHub Pages.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "latex/**"
+      - "site/**"
+      - ".github/workflows/latex.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      latex_ok: ${{ steps.compile.outcome == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile LaTeX
+        id: compile
+        # Keep going if one document is broken so the others still get published.
+        continue-on-error: true
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: "latex/*.tex"
+          work_in_root_file_dir: true
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/pdf
+          cp -r site/. _site/
+          shopt -s nullglob
+          for f in latex/*.pdf; do cp "$f" _site/pdf/; done
+          ls -la _site _site/pdf
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Report LaTeX errors
+        if: needs.build.outputs.latex_ok != 'true'
+        run: |
+          echo "::error::At least one LaTeX document failed to compile. Open the 'Compile LaTeX' step of the build job for the log."
+          exit 1

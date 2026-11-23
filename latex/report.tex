@@ -1,0 +1,30 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single}
+\graphicspath{{figures/}}
+
+\title{Team Bytes\\\large OOP Workshop -- S{\o}nderborg Library Digital Media Platform}
+\author{Bogdan Furnica \and Teammate 2 \and Teammate 3}
+\date{SDU Software Engineering, November 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+% Each sprint lives in its own file under sections/ so we can edit in parallel
+% without overwriting each other's work.
+\input{sections/sprint1}
+\input{sections/sprint2}
+\input{sections/sprint3}
+\input{sections/sprint4}
+
+\end{document}

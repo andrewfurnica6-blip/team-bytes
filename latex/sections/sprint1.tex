@@ -1,0 +1,36 @@
+\section{Sprint 1: Project Creation}
+
+\subsection{Goal}
+Create a shared GitHub repository, add all group members, create a C\# project,
+push it, and verify that every member can pull and compile the code.
+
+\subsection{What we did}
+\begin{enumerate}
+  \item Created the GitHub repository \texttt{team-bytes}.
+  \item Added the other two group members as collaborators.
+  \item Created a C\# console project (\texttt{src/TeamBytes.csproj}, .NET 8) inside the
+        solution \texttt{TeamBytes.sln}, following the proposed repository structure
+        (\texttt{doc/}, \texttt{var/}, \texttt{src/}, \texttt{test/}).
+  \item Each member pulled the repository and ran \texttt{dotnet build}.
+  \item Added a \texttt{README.md} listing the team members and how to build the project.
+\end{enumerate}
+
+\subsection{Extra tooling}
+\begin{itemize}
+  \item A GitHub Actions workflow builds the C\# code on every push, so broken code
+        is noticed straight away.
+  \item A small web editor (GitHub Pages) lets us edit these \LaTeX{} files in the
+        browser. Saving commits straight to the repository, and a second workflow
+        compiles the PDF automatically.
+\end{itemize}
+
+\subsection{Verification}
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  Member & Pulled & \texttt{dotnet build} \\
+  \midrule
+  Bogdan Furnica & yes & succeeded \\
+  Teammate 2     &     &           \\
+  Teammate 3     &     &           \\
+  \bottomrule
+\end{tabular}

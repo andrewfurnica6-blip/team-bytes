@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Bytes LaTeX</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/stex/stex.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #667085; --border: #dde1e7;
+    --accent: #2f5bd3; --accent-text: #ffffff; --ok: #1f8a4c; --warn: #b7791f; --bad: #c53030;
+    --sel: #e8eefc; --code-bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --panel: #1a1e26; --text: #e4e7ec; --muted: #98a2b3; --border: #2b313c;
+      --accent: #6d8ff0; --accent-text: #0d1117; --ok: #4ade80; --warn: #f6c453; --bad: #f87171;
+      --sel: #243049; --code-bg: #161a21;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  input[type=text], input[type=password] { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; width: 100%; }
+  a { color: var(--accent); }
+
+  header { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  header .spacer { flex: 1; }
+  #status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.ok { background: var(--ok); } .dot.run { background: var(--warn); } .dot.bad { background: var(--bad); }
+
+  #app { display: grid; grid-template-columns: 240px 1fr; height: calc(100% - 50px); }
+  #app.with-pdf { grid-template-columns: 240px 1fr 1fr; }
+  aside { border-right: 1px solid var(--border); background: var(--panel); overflow: auto; padding: 10px; }
+  aside .actions { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  #files { list-style: none; margin: 0; padding: 0; }
+  #files li { padding: 5px 8px; border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #files li:hover { background: var(--sel); }
+  #files li.active { background: var(--sel); font-weight: 600; }
+  #files li.dir { color: var(--muted); cursor: default; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-top: 8px; }
+  #files li.dir:hover { background: none; }
+
+  main { display: flex; flex-direction: column; min-width: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .toolbar .name { font-weight: 600; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toolbar .dirty::after { content: " \2022 unsaved"; color: var(--warn); font-weight: 400; }
+  #editorWrap { flex: 1; min-height: 0; position: relative; }
+  .CodeMirror { height: 100%; font: 13.5px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--code-bg); color: var(--text); }
+  .CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--border); }
+  .CodeMirror-linenumber { color: var(--muted); }
+  .CodeMirror-cursor { border-left-color: var(--text); }
+  .CodeMirror-selected, .CodeMirror-focused .CodeMirror-selected { background: var(--sel) !important; }
+  .cm-s-default .cm-tag { color: var(--accent); }
+  .cm-s-default .cm-comment { color: var(--muted); }
+  .cm-s-default .cm-bracket, .cm-s-default .cm-builtin { color: var(--ok); }
+  .cm-s-default .cm-keyword { color: var(--bad); }
+  .cm-s-default .cm-atom, .cm-s-default .cm-number { color: var(--warn); }
+  #empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); padding: 16px; text-align: center; }
+
+  #pdfPane { display: none; border-left: 1px solid var(--border); flex-direction: column; min-width: 0; }
+  #app.with-pdf #pdfPane { display: flex; }
+  #pdfPane iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+
+  #login { max-width: 520px; margin: 48px auto; padding: 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+  #login h2 { margin-top: 0; }
+  #login ol { padding-left: 20px; }
+  #login .row { display: flex; gap: 8px; margin-top: 12px; }
+  #loginError { color: var(--bad); margin-top: 8px; min-height: 1.2em; }
+
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 6px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 760px) {
+    #app, #app.with-pdf { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: auto; min-height: calc(100% - 50px); }
+    aside { border-right: 0; border-bottom: 1px solid var(--border); max-height: 30vh; }
+    #editorWrap { height: 60vh; flex: none; }
+    #pdfPane { border-left: 0; border-top: 1px solid var(--border); height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Team Bytes LaTeX</h1>
+  <span id="repoLabel" style="color:var(--muted)"></span>
+  <span class="spacer"></span>
+  <span id="status" title="Latest PDF build on GitHub Actions"><span class="dot" id="buildDot"></span><a id="buildLink" target="_blank" rel="noopener">PDF build</a></span>
+  <span id="who" style="color:var(--muted)"></span>
+  <button id="logoutBtn" hidden>Sign out</button>
+</header>
+
+<section id="login" hidden>
+  <h2>Sign in with a GitHub token</h2>
+  <p>Saving here makes a real commit in the repo under your own GitHub name, so each of us signs in with our own token. It is stored only in this browser.</p>
+  <ol>
+    <li>Open <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=Team%20Bytes%20LaTeX%20editor" target="_blank" rel="noopener">GitHub &rarr; New classic token</a> (the link pre-selects the <b>public_repo</b> scope).</li>
+    <li>Pick an expiry (e.g. 90 days) and click <b>Generate token</b>.</li>
+    <li>Paste it below. You must already be a collaborator on the repo.</li>
+  </ol>
+  <input type="password" id="tokenInput" placeholder="ghp_..." autocomplete="off">
+  <div class="row"><button class="primary" id="loginBtn">Sign in</button></div>
+  <div id="loginError"></div>
+</section>
+
+<div id="app" hidden>
+  <aside>
+    <div class="actions">
+      <button id="newBtn" title="Create a new file in latex/">New</button>
+      <button id="uploadBtn" title="Upload an image or other file into latex/figures/">Upload</button>
+      <button id="refreshBtn" title="Reload the file list">Refresh</button>
+      <input type="file" id="uploadInput" hidden multiple>
+    </div>
+    <ul id="files"></ul>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <span class="name" id="fileName">No file open</span>
+      <button id="reloadBtn" disabled title="Load the latest version from GitHub">Reload</button>
+      <button id="deleteBtn" disabled>Delete</button>
+      <button id="pdfBtn">Show PDF</button>
+      <button class="primary" id="saveBtn" disabled title="Ctrl+S">Save &amp; commit</button>
+    </div>
+    <div id="editorWrap"><div id="empty">Pick a file on the left, or create one with <b>New</b>.</div></div>
+  </main>
+  <section id="pdfPane">
+    <div class="toolbar">
+      <span class="name" id="pdfName">PDF</span>
+      <a id="pdfOpen" target="_blank" rel="noopener">Open in new tab</a>
+      <button id="pdfReload">Reload PDF</button>
+    </div>
+    <iframe id="pdfFrame" title="Compiled PDF"></iframe>
+  </section>
+</div>
+<div id="toast"></div>
+
+<script>
+(() => {
+  // ---- Repository settings -------------------------------------------------
+  // On GitHub Pages (https://OWNER.github.io/REPO/) these are worked out from the URL.
+  const FALLBACK_OWNER = "andrewfurnica6-blip";
+  const FALLBACK_REPO = "team-bytes";
+  const BRANCH = "main";
+  const ROOT = "latex/";
+  const BUILD_WORKFLOW = "latex.yml";
+
+  const onPages = location.hostname.endsWith(".github.io");
+  const OWNER = onPages ? location.hostname.split(".")[0] : FALLBACK_OWNER;
+  const REPO = onPages ? (location.pathname.split("/").filter(Boolean)[0] || FALLBACK_REPO) : FALLBACK_REPO;
+  const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+  const PAGES_BASE = onPages ? `${location.origin}/${REPO}/` : `https://${OWNER}.github.io/${REPO}/`;
+
+  // ---- Small helpers ---------------------------------------------------------
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+  let toastTimer;
+  function toast(msg, ms = 3000) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+  }
+  function b64ToText(b64) {
+    const bin = atob(b64.replace(/\n/g, ""));
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+  function bytesToB64(bytes) {
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  const textToB64 = s => bytesToB64(new TextEncoder().encode(s));
+  const encPath = p => p.split("/").map(encodeURIComponent).join("/");
+  const isText = p => /\.(tex|bib|sty|cls|txt|md|bst|csv)$/i.test(p);
+
+  let token = store.get("tb_token");
+  let me = null;
+
+  async function gh(path, opts = {}) {
+    const res = await fetch(path.startsWith("http") ? path : API + path, {
+      ...opts,
+      headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { msg = (await res.json()).message || msg; } catch {}
+      const err = new Error(`${res.status}: ${msg}`); err.status = res.status; throw err;
+    }
+    return res.status === 204 ? null : res.json();
+  }
+
+  // ---- Sign in ----------------------------------------------------------------
+  async function signIn() {
+    try {
+      me = await gh("https://api.github.com/user");
+      const repo = await gh("");
+      if (!repo.permissions || !repo.permissions.push) throw new Error(`You (${me.login}) can read ${OWNER}/${REPO} but cannot push. Ask the owner to add you as a collaborator and accept the invite.`);
+      $("login").hidden = true; $("app").hidden = false;
+      $("who").textContent = "@" + me.login; $("logoutBtn").hidden = false;
+      $("repoLabel").innerHTML = `<a href="https://github.com/${OWNER}/${REPO}" target="_blank" rel="noopener">${OWNER}/${REPO}</a>`;
+      await loadTree();
+      const last = store.get("tb_last");
+      if (last && tree.some(f => f.path === last)) openFile(last);
+      pollBuild();
+    } catch (e) {
+      $("login").hidden = false; $("app").hidden = true;
+      $("loginError").textContent = e.status === 401 ? "That token was rejected. Check that you copied all of it and that it has not expired." : e.message;
+      if (e.status === 401) { store.del("tb_token"); token = null; }
+    }
+  }
+  $("loginBtn").onclick = () => {
+    const v = $("tokenInput").value.trim();
+    if (!v) return;
+    token = v; store.set("tb_token", v); $("loginError").textContent = "Checking..."; signIn();
+  };
+  $("tokenInput").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
+  $("logoutBtn").onclick = () => {
+    if (dirty && !confirm("You have unsaved changes. Sign out anyway?")) return;
+    store.del("tb_token"); location.reload();
+  };
+
+  // ---- File list ----------------------------------------------------------------
+  let tree = [];
+  async function loadTree() {
+    const data = await gh(`/git/trees/${BRANCH}?recursive=1`);
+    tree = data.tree.filter(n => n.type === "blob" && n.path.startsWith(ROOT) && !/\.pdf$/i.test(n.path));
+    renderTree();
+  }
+  function renderTree() {
+    const ul = $("files"); ul.innerHTML = "";
+    let lastDir = null;
+    const sorted = [...tree].sort((a, b) => {
+      const da = a.path.lastIndexOf("/"), db = b.path.lastIndexOf("/");
+      const dirA = a.path.slice(0, da), dirB = b.path.slice(0, db);
+      return dirA === dirB ? a.path.localeCompare(b.path) : dirA.localeCompare(dirB);
+    });
+    for (const f of sorted) {
+      const dir = f.path.slice(0, f.path.lastIndexOf("/") + 1);
+      if (dir !== lastDir) {
+        const d = document.createElement("li"); d.className = "dir"; d.textContent = dir; ul.appendChild(d); lastDir = dir;
+      }
+      const li = document.createElement("li");
+      li.textContent = f.path.slice(dir.length);
+      li.title = f.path;
+      if (current && current.path === f.path) li.classList.add("active");
+      li.onclick = () => openFile(f.path);
+      ul.appendChild(li);
+    }
+    if (!sorted.length) ul.innerHTML = `<li class="dir">No files in ${ROOT} yet</li>`;
+  }
+  $("refreshBtn").onclick = () => loadTree().then(() => toast("File list updated")).catch(e => toast(e.message));
+
+  // ---- Editor ---------------------------------------------------------------------
+  const cm = CodeMirror($("editorWrap"), { mode: "stex", lineNumbers: true, lineWrapping: true, readOnly: "nocursor", value: "" });
+  cm.getWrapperElement().style.display = "none";
+  let current = null;   // { path, sha }
+  let dirty = false;
+  let loading = false;
+
+  function setDirty(v) {
+    dirty = v;
+    $("fileName").classList.toggle("dirty", v);
+    $("saveBtn").disabled = !current || !v;
+  }
+  cm.on("change", () => {
+    if (loading || !current) return;
+    setDirty(true);
+    store.set("tb_draft:" + current.path, JSON.stringify({ sha: current.sha, text: cm.getValue() }));
+  });
+
+  async function openFile(path) {
+    if (current && current.path === path) return;
+    if (dirty && !confirm("You have unsaved changes in " + current.path + ". Discard them?")) return;
+    if (!isText(path)) {
+      window.open(`https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${encPath(path)}`, "_blank", "noopener");
+      return;
+    }
+    try {
+      const f = await gh(`/contents/${encPath(path)}?ref=${BRANCH}`);
+      let text = b64ToText(f.content);
+      current = { path, sha: f.sha };
+      const draftRaw = store.get("tb_draft:" + path);
+      if (draftRaw) {
+        const draft = JSON.parse(draftRaw);
+        if (draft.text !== text && confirm(`You have unsaved changes to ${path} from an earlier session${draft.sha !== f.sha ? " (and someone has saved a newer version since)" : ""}. Restore your unsaved version?`)) {
+          text = draft.text;
+          showFile(path, text, true); return;
+        }
+        store.del("tb_draft:" + path);
+      }
+      showFile(path, text, false);
+    } catch (e) { toast("Could not open file: " + e.message, 5000); }
+  }
+  function showFile(path, text, isDirty) {
+    loading = true;
+    cm.getWrapperElement().style.display = "";
+    $("empty").style.display = "none";
+    cm.setOption("readOnly", false);
+    cm.setValue(text); cm.clearHistory();
+    loading = false;
+    $("fileName").textContent = path;
+    $("reloadBtn").disabled = false; $("deleteBtn").disabled = false;
+    setDirty(isDirty);
+    store.set("tb_last", path);
+    renderTree(); updatePdf(); cm.refresh(); cm.focus();
+  }
+
+  async function save(force = false) {
+    if (!current || !dirty) return;
+    const path = current.path;
+    const msg = prompt("Commit message:", `Update ${path.slice(ROOT.length)}`);
+    if (msg === null) return;
+    $("saveBtn").disabled = true; $("saveBtn").textContent = "Saving...";
+    try {
+      let sha = current.sha;
+      if (force) sha = (await gh(`/contents/${encPath(path)}?ref=${BRANCH}`)).sha;
+      const res = await gh(`/contents/${encPath(path)}`, {
+        method: "PUT",
+        body: JSON.stringify({ message: msg || `Update ${path}`, content: textToB64(cm.getValue()), sha, branch: BRANCH }),
+      });
+      current.sha = res.content.sha;
+      store.del("tb_draft:" + path);
+      setDirty(false);
+      toast("Saved. The PDF will rebuild in about a minute.");
+      loadTree().catch(() => {});
+      pollBuild(true);
+    } catch (e) {
+      if (e.status === 409 || e.status === 422) {
+        const overwrite = confirm(`Someone else saved ${path} after you opened it.\n\nOK = overwrite their version with yours\nCancel = keep editing (your text stays here; use Reload to see theirs, your draft is kept in this browser)`);
+        $("saveBtn").textContent = "Save & commit"; setDirty(true);
+        if (overwrite) return save(true);
+      } else toast("Save failed: " + e.message, 6000);
+    } finally {
+      $("saveBtn").textContent = "Save & commit"; $("saveBtn").disabled = !dirty;
+    }
+  }
+  $("saveBtn").onclick = () => save();
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); save(); }
+  });
+  window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+  $("reloadBtn").onclick = async () => {
+    if (!current) return;
+    if (dirty && !confirm("Throw away your unsaved changes and load the latest version from GitHub? (A copy stays in this browser's draft until you save.)")) return;
+    const path = current.path; current = null; setDirty(false);
+    store.del("tb_draft:" + path);
+    openFile(path);
+  };
+
+  $("newBtn").onclick = async () => {
+    let name = prompt(`New file name (inside ${ROOT}), e.g. sections/sprint5.tex`);
+    if (!name) return;
+    name = name.trim().replace(/^\/+/, "").replace(/^latex\//, "");
+    if (!/^[\w\-./]+$/.test(name) || name.includes("..")) { toast("Use only letters, numbers, - _ . and /"); return; }
+    if (!/\.\w+$/.test(name)) name += ".tex";
+    const path = ROOT + name;
+    if (tree.some(f => f.path === path)) { openFile(path); return; }
+    if (dirty && !confirm("You have unsaved changes. Discard them?")) return;
+    const isSection = name.includes("/");
+    const body = !name.endsWith(".tex") ? "" : isSection
+      ? `\\section{${name.replace(/^.*\//, "").replace(/\.tex$/, "")}}\n\n`
+      : "\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\n\\title{Team Bytes}\n\\author{}\n\n\\begin{document}\n\\maketitle\n\n\\end{document}\n";
+    try {
+      await gh(`/contents/${encPath(path)}`, { method: "PUT", body: JSON.stringify({ message: `Add ${name}`, content: textToB64(body), branch: BRANCH }) });
+      setDirty(false); current = null;
+      await loadTree(); await openFile(path);
+      if (isSection) toast(`Remember to add \\input{${name.replace(/\.tex$/, "")}} to the main document.`, 6000);
+      pollBuild(true);
+    } catch (e) { toast("Could not create file: " + e.message, 6000); }
+  };
+
+  $("deleteBtn").onclick = async () => {
+    if (!current) return;
+    if (!confirm(`Delete ${current.path} from the repository? (It stays in the git history.)`)) return;
+    try {
+      const latest = await gh(`/contents/${encPath(current.path)}?ref=${BRANCH}`);
+      await gh(`/contents/${encPath(current.path)}`, { method: "DELETE", body: JSON.stringify({ message: `Delete ${current.path.slice(ROOT.length)}`, sha: latest.sha, branch: BRANCH }) });
+      store.del("tb_draft:" + current.path);
+      current = null; setDirty(false);
+      cm.getWrapperElement().style.display = "none"; $("empty").style.display = "";
+      $("fileName").textContent = "No file open"; $("reloadBtn").disabled = true; $("deleteBtn").disabled = true;
+      await loadTree(); toast("Deleted"); pollBuild(true);
+    } catch (e) { toast("Delete failed: " + e.message, 6000); }
+  };
+
+  $("uploadBtn").onclick = () => $("uploadInput").click();
+  $("uploadInput").onchange = async e => {
+    const files = [...e.target.files]; e.target.value = "";
+    for (const file of files) {
+      if (file.size > 20 * 1024 * 1024) { toast(`${file.name} is larger than 20 MB`); continue; }
+      const path = ROOT + (/\.(tex|bib|sty|cls)$/i.test(file.name) ? "" : "figures/") + file.name.replace(/[^\w\-.]/g, "_");
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const existing = tree.find(f => f.path === path);
+        if (existing && !confirm(`${path} already exists. Replace it?`)) continue;
+        await gh(`/contents/${encPath(path)}`, { method: "PUT", body: JSON.stringify({ message: `Upload ${path.slice(ROOT.length)}`, content: bytesToB64(bytes), branch: BRANCH, ...(existing ? { sha: existing.sha } : {}) }) });
+        toast(`Uploaded ${path}`);
+      } catch (err) { toast(`Upload of ${file.name} failed: ${err.message}`, 6000); }
+    }
+    loadTree().catch(() => {}); pollBuild(true);
+  };
+
+  // ---- PDF preview -----------------------------------------------------------------
+  function pdfFor() {
+    // Top-level files compile to their own PDF; anything in a subfolder belongs to the main document.
+    const tops = tree.filter(f => /^latex\/[^/]+\.tex$/.test(f.path)).map(f => f.path);
+    let src = current && /^latex\/[^/]+\.tex$/.test(current.path) ? current.path : null;
+    if (!src) src = tops.includes("latex/report.tex") ? "latex/report.tex" : tops[0];
+    return src ? src.slice(ROOT.length).replace(/\.tex$/, ".pdf") : null;
+  }
+  function updatePdf(bust) {
+    if (!$("app").classList.contains("with-pdf")) return;
+    const name = pdfFor();
+    if (!name) { $("pdfName").textContent = "No PDF yet"; return; }
+    const url = PAGES_BASE + "pdf/" + name;
+    $("pdfName").textContent = name; $("pdfOpen").href = url;
+    const target = url + "?t=" + (bust ? Date.now() : (lastBuildId || 0));
+    if ($("pdfFrame").dataset.src !== target) { $("pdfFrame").dataset.src = target; $("pdfFrame").src = target; }
+  }
+  $("pdfBtn").onclick = () => {
+    const on = $("app").classList.toggle("with-pdf");
+    $("pdfBtn").textContent = on ? "Hide PDF" : "Show PDF";
+    store.set("tb_pdf", on ? "1" : "0");
+    updatePdf(); cm.refresh();
+  };
+  $("pdfReload").onclick = () => updatePdf(true);
+  if (store.get("tb_pdf") === "1") { $("app").classList.add("with-pdf"); $("pdfBtn").textContent = "Hide PDF"; }
+
+  // ---- Build status -----------------------------------------------------------------
+  let pollTimer, lastBuildId = null, lastConclusion = null;
+  // waitTries > 0 means a commit was just made: poll quickly until its build shows up and finishes.
+  async function pollBuild(waitTries = 0) {
+    if (waitTries === true) waitTries = 15;
+    clearTimeout(pollTimer);
+    try {
+      const data = await gh(`/actions/workflows/${BUILD_WORKFLOW}/runs?branch=${BRANCH}&per_page=1`);
+      const run = data.workflow_runs[0];
+      const dot = $("buildDot"), link = $("buildLink");
+      if (!run) { link.textContent = "PDF build: none yet"; dot.className = "dot"; }
+      else {
+        link.href = run.html_url;
+        const running = run.status !== "completed";
+        dot.className = "dot " + (running ? "run" : run.conclusion === "success" ? "ok" : "bad");
+        link.textContent = running ? "PDF building..." : run.conclusion === "success" ? "PDF up to date" : "PDF build failed (open log)";
+        if (!running && (run.id !== lastBuildId || run.conclusion !== lastConclusion)) {
+          const isNew = lastBuildId !== null && run.id !== lastBuildId;
+          lastBuildId = run.id; lastConclusion = run.conclusion;
+          if (isNew) {
+            // Pages needs a few seconds after the run finishes before it serves the new PDF.
+            setTimeout(() => updatePdf(true), 8000);
+            toast(run.conclusion === "success" ? "New PDF is ready" : "PDF build failed: open the build log (top right)", 5000);
+            waitTries = 0;
+          } else updatePdf();
+        }
+        if (running || waitTries > 0) { pollTimer = setTimeout(() => pollBuild(running ? Math.max(waitTries, 1) : waitTries - 1), 8000); return; }
+      }
+    } catch { /* status is optional; ignore errors */ }
+    pollTimer = setTimeout(() => pollBuild(), 60000);
+  }
+
+  // ---- Start ------------------------------------------------------------------------
+  if (token) signIn(); else $("login").hidden = false;
+})();
+</script>
+</body>
+</html>
