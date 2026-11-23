@@ -8,7 +8,7 @@ We are building a console application for **Sønderborg Library's digital media 
 | Member | GitHub | Role in Sprint 1 |
 |---|---|---|
 | Bogdan Furnica | [@andrewfurnica6-blip](https://github.com/andrewfurnica6-blip) | Created the repo, the C# project and the LaTeX editor |
-| *Teammate 2* | *@username* | Pull and verify the build |
+| Fabio Telesca | [@FabioT551](https://github.com/FabioT551) | Pull and verify the build |
 | *Teammate 3* | *@username* | Pull and verify the build |
 
 ## Build and run
