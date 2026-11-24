@@ -1,0 +1,6 @@
+namespace TeamBytes.Domain.Interfaces;
+
+public interface IPlayable
+{
+    void Play();
+}
