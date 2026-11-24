@@ -3,9 +3,9 @@ namespace TeamBytes;
 public class Employee:User
 {
     protected Library library;
-    public Employee(string name, int age, string ssn) : base(name, age, ssn, UserRole.Employee)
+    public Employee(string name, int age, string ssn, Library library) : base(name, age, ssn, UserRole.Employee)
     {
-        this.library = Library;
+        this.library = library;
     }
 
     public void AddMedia(Media media)

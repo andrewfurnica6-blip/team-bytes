@@ -2,24 +2,30 @@ namespace TeamBytes;
 
 public class Admin:User
 {
-    public Admin(string name, int age, string ssn) : base(name, age, ssn, UserRole.Admin)
+    private Library library;
+    public Admin(string name, int age, string ssn, Library library) : base(name, age, ssn, UserRole.Admin)
     {
+        this.library = library;
     }
 
     public List<User> ListUsers()
     {
         return library.ListUsers();
     }
-    public void CreateUser(string name, int age, string ssn, UserRole role)
+    public void CreateUser(User user)
     {
-        library.CreateUser(name, age, ssn, role);
+        library.AddUser(user);
     }
     public void DeleteUser(string ssn)
     {
-        library.DeleteUser(ssn);
+        library.RemoveUser(ssn);
     }
     public void UpdateUser(string ssn, string name, int age)
     {
-        library.UpdateUser(ssn, name, age);
+        User? user = library.FindUser(ssn);
+        if (user != null)
+        {
+            user.UpdateInfo(name, age);
+        }
     }
 }
