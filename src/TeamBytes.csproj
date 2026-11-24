@@ -13,8 +13,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\Media\" />
-    <Folder Include="Domain\User\" />
     <Folder Include="Persistence\" />
     <Folder Include="Presentation\" />
   </ItemGroup>

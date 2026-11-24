@@ -1,4 +1,4 @@
-namespace TeamBytes.Domain.Interfaces;
+namespace TeamBytes;
 
 public interface ICompletable
 {

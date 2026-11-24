@@ -1,4 +1,4 @@
-namespace TeamBytes.Domain.Enums;
+namespace TeamBytes;
 
 public enum UserRole
 {
