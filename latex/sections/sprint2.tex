@@ -1,10 +1,771 @@
+
+\usetikzlibrary{shapes.multipart,arrows.meta,calc}
+
+\newcommand{\umlstereo}[1]{\guillemotleft{}#1\guillemotright{}} % <<stereotype>>
+\newcommand{\gen}[1]{\textless{}#1\textgreater{}}               % generic <T>
+\newcommand{\crcitem}[1]{\hangindent=0.9em\hangafter=1\noindent\textbullet~#1\par}
+
+% CRC card: name, responsibilities, collaborators
+\newcommand{\crccard}[3]{%
+  \begin{minipage}[t]{0.495\textwidth}
+    \footnotesize
+    \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.52\linewidth}|>{\raggedright\arraybackslash}p{0.40\linewidth}|}
+      \hline
+      \multicolumn{2}{|c|}{\textbf{#1}}\\ \hline
+      \textbf{Responsibilities} & \textbf{Collaborators}\\ \hline
+      #2 & #3 \\ \hline
+    \end{tabular}
+  \end{minipage}}
+
+
+\tikzset{
+  umlc/.style={rectangle split, rectangle split parts=3, draw=black!80,
+    line width=0.4pt, align=left, inner xsep=2.5pt, inner ysep=1.6pt,
+    font=\sffamily\fontsize{6.3}{7.6}\selectfont,
+    rectangle split part fill={blue!10,white,white},
+    every text node part/.style={align=center}},
+  umlpres/.style={umlc, rectangle split part fill={cyan!18,white,white}},
+  umldom/.style={umlc, rectangle split part fill={green!18,white,white}},
+  umlper/.style={umlc, rectangle split part fill={orange!25,white,white}},
+  umli/.style={rectangle split, rectangle split parts=2, draw=black!80,
+    line width=0.4pt, align=left, inner xsep=2.5pt, inner ysep=1.6pt,
+    font=\sffamily\fontsize{6.3}{7.6}\selectfont,
+    rectangle split part fill={yellow!30,white},
+    every text node part/.style={align=center}},
+  umlcol/.style={rectangle, draw=black!80, line width=0.4pt, align=center,
+    inner xsep=3pt, inner ysep=3pt, fill=green!18,
+    font=\sffamily\fontsize{6.3}{7.6}\selectfont},
+  gen/.style={-{Triangle[open,length=2.4mm,width=2.2mm]}, line width=0.4pt},
+  real/.style={-{Triangle[open,length=2.4mm,width=2.2mm]}, dashed, line width=0.4pt},
+  assoc/.style={-{Straight Barb[length=1.8mm]}, line width=0.4pt},
+  dep/.style={-{Straight Barb[length=1.8mm]}, dashed, line width=0.4pt},
+  compo/.style={{Diamond[length=3mm,width=2mm]}-, line width=0.4pt},
+  mult/.style={font=\sffamily\fontsize{5.5}{6}\selectfont, inner sep=1.2pt},
+}
+
 \section{Sprint 2: From Program Specification to Class Diagram}
 
+This sprint turns the program specification of Sønderborg's digital media platform into a design. We first define the requirements, then perform a verb-noun analysis of the specification, derive CRC cards from both, and finally combine everything into a UML class diagram.
+
+\textbf{Scope.} The design covers the core of the specification: seven media types, three user categories, borrowing and rating, collection and user management, and a console interface that asks for the user's role on startup. Authentication, returning items, sorting and file persistence are workshop extensions. They are not required for the core, but the design is prepared for them (e.g.\ the \texttt{CsvFileHandler} in the data access layer).
+
+% ---------------------------------------------------------------------
 \subsection{Requirements}
-% Functional and non-functional requirements.
+% ---------------------------------------------------------------------
 
+Table~\ref{tab:requirements} lists the functional (FR) and non-functional (NFR) requirements derived from the program specification. The column \emph{Relates to} points to the part of the specification the requirement originates from.
+
+{\small
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.07\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.11\textwidth}|>{\raggedright\arraybackslash}p{0.14\textwidth}|>{\raggedright\arraybackslash}p{0.265\textwidth}|}
+\caption{Functional and non-functional requirements.}\label{tab:requirements}\\
+\hline
+\textbf{ID} & \textbf{Requirement} & \textbf{Type} & \textbf{Relates to (spec.)} & \textbf{Justification}\\ \hline
+\endfirsthead
+\multicolumn{5}{l}{\small\emph{Table~\thetable{} continued from previous page}}\\ \hline
+\textbf{ID} & \textbf{Requirement} & \textbf{Type} & \textbf{Relates to (spec.)} & \textbf{Justification}\\ \hline
+\endhead
+\hline \multicolumn{5}{r}{\small\emph{Continued on next page}}\\
+\endfoot
+\hline
+\endlastfoot
+
+FR1 & The system must support seven media types: e-books, movies, songs, video games, apps, podcasts and images. & Functional & Media types & These are the kinds of content the library wants to share; the whole platform is built around them.\\ \hline
+FR2 & Each media type must store the attributes listed in the specification (e.g.\ author and ISBN for e-books, host(s) and episode number for podcasts). & Functional & Media types & The attributes are what a borrower sees when previewing an item and what an employee must provide when adding one.\\ \hline
+FR3 & Each media type must offer its own actions: read (e-book), watch (movie), play (song), play and complete (video game), execute (app), listen to and complete (podcast), display (image). & Functional & Media types & The actions differ per type, so each type needs its own behaviour.\\ \hline
+FR4 & Every media item must be downloadable. & Functional & Media types & All seven media types list \emph{download} as an action.\\ \hline
+FR5 & A borrower must be able to borrow any media item. & Functional & Borrowing and rating & Borrowing is the central interaction between a borrower and the collection and is a precondition for rating.\\ \hline
+FR6 & Only users who have borrowed an item may rate it. Rating attempts by other users must be rejected. & Functional & Borrowing and rating & Ratings are only meaningful if they come from people who actually used the item.\\ \hline
+FR7 & The system must support three user categories, Admin, Employee and Borrower, each with a name, age and social security number. & Functional & User categories & The categories decide which actions a user is allowed to perform.\\ \hline
+FR8 & On startup, the program must ask the user to identify their role. No authentication is required. & Functional & User categories & The role determines which menu is shown. Authentication is a later extension.\\ \hline
+FR9 & A borrower must be able to list media items by type. & Functional & Borrower & Lets the borrower find items of the kind they are interested in.\\ \hline
+FR10 & A borrower must be able to select an item and preview its details. & Functional & Borrower & The borrower needs the details of an item before deciding to borrow it.\\ \hline
+FR11 & An employee must be able to add media items to the collection. & Functional & Employee & Employees are responsible for managing the collection.\\ \hline
+FR12 & An employee must be able to remove media items from the collection. & Functional & Employee & Outdated or wrongly registered items must be removable.\\ \hline
+FR13 & An admin must have all the rights of an employee. & Functional & Admin & Stated explicitly in the specification; also fits an inheritance relation (Admin is an Employee).\\ \hline
+FR14 & An admin must be able to view, create, delete and update the personal information of borrowers and employees. & Functional & Admin & User management is what separates an admin from an employee.\\ \hline
+FR15 & Every user must only be offered the actions their role allows, presented in a clear and structured menu. & Functional & Console interface & Supported actions must be available to all user categories in a structured way, and a borrower must not reach management actions.\\ \hline
+FR16 & The console interface must validate all input and reject invalid input or actions with a clear message, after which the user can try again. & Functional & Console interface & The specification requires that errors and invalid actions do not pass the input filter.\\ \hline
+FR17 & The system could load media and users from a file at startup and save changes to it. & Functional (could) & Workshop extension 3 & Not required by the core specification, but keeps data between runs.\\ \hline
+NFR1 & Adding a new media type must not require changes to existing media classes or to the library logic. & Non-functional & Extensibility & The specification asks for growth without disrupting existing functionality.\\ \hline
+NFR2 & Adding a new user role must not require changes to existing roles. & Non-functional & Extensibility & Same reason as NFR1, but for user roles.\\ \hline
+NFR3 & The console interface must guide the user with clear instructions and prompts. & Non-functional & Console interface & Usability: users should never have to guess what to type next.\\ \hline
+NFR4 & Invalid operations (e.g.\ removing a non-existing item or rating without borrowing) must be handled with exceptions and informative messages, and must not crash the program. & Non-functional & Console interface & Robustness: errors are reported to the user, not to the operating system.\\ \hline
+NFR5 & The code must be organised in three layers: Presentation, Domain and Data access. The domain layer must not depend on the console. & Non-functional & Design hint & Separation of concerns makes the code easier to maintain and to extend.\\ \hline
+NFR6 & Domain classes must be testable without console input or output. & Non-functional & Design hint & Needed for the unit tests in Sprint 4.\\ \hline
+NFR7 & The program must be a C\# console application that compiles without warnings. & Non-functional & Workshop & Technology choice given by the course.\\ \hline
+\end{longtable}
+}
+
+% ---------------------------------------------------------------------
 \subsection{Verb-noun analysis}
+% ---------------------------------------------------------------------
 
+Table~\ref{tab:verbnoun} lists all nouns and verbs found in the program specification. Nouns are candidates for classes and attributes; verbs are candidates for methods and capability interfaces.
+
+{\small
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.27\textwidth}|>{\raggedright\arraybackslash}p{0.27\textwidth}|>{\raggedright\arraybackslash}p{0.27\textwidth}|}
+\caption{Nouns and verbs found in the program specification.}\label{tab:verbnoun}\\
+\hline
+\multicolumn{2}{|c|}{\textbf{Nouns}} & \textbf{Verbs}\\ \hline
+\endfirsthead
+\hline
+\multicolumn{2}{|c|}{\textbf{Nouns}} & \textbf{Verbs}\\ \hline
+\endhead
+\hline
+\endlastfoot
+Library & Supported platform & Manage\\ \hline
+Digital platform & Version & Share\\ \hline
+Media collection & File size & View\\ \hline
+Media item & Host & Download\\ \hline
+Media type & Guest & Read\\ \hline
+E-book & Episode number & Watch\\ \hline
+Movie & Resolution & Play\\ \hline
+Song & File format & Listen\\ \hline
+Video game & Date taken & Complete\\ \hline
+App & Rating & Execute\\ \hline
+Podcast & User & Display\\ \hline
+Image & Admin & Borrow\\ \hline
+Title & Employee & Rate\\ \hline
+Author & Borrower & Identify\\ \hline
+Language & Name & Interact\\ \hline
+Number of pages & Age & List\\ \hline
+Year of publication & Social security number & Select\\ \hline
+ISBN & Role & Preview\\ \hline
+Director & Console interface & Perform\\ \hline
+Genre & Action & Add\\ \hline
+Release year & Details & Remove\\ \hline
+Duration & Input & Create\\ \hline
+Composer & Error & Delete\\ \hline
+Singer & Instruction & Update\\ \hline
+File type & Personal information & Validate\\ \hline
+Publisher & Rights & Guide\\ \hline
+\end{longtable}
+}
+
+The nouns and verbs were then sorted. Table~\ref{tab:nouns} shows what happened to the nouns, and Table~\ref{tab:verbs} shows how the verbs were mapped to methods and capability interfaces, following the hint to turn verbs such as \emph{play} and \emph{download} into interfaces.
+
+{\small
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.27\textwidth}|>{\raggedright\arraybackslash}p{0.15\textwidth}|>{\raggedright\arraybackslash}p{0.40\textwidth}|}
+\caption{Classification of the nouns.}\label{tab:nouns}\\
+\hline
+\textbf{Noun(s)} & \textbf{Result} & \textbf{Reason}\\ \hline
+\endfirsthead
+\hline
+\textbf{Noun(s)} & \textbf{Result} & \textbf{Reason}\\ \hline
+\endhead
+\hline
+\endlastfoot
+Media item, media type & Class & Abstract class \texttt{Media} holds what all media share (id, title, borrowers, ratings).\\ \hline
+E-book, movie, song, video game, app, podcast, image & Classes & Seven subclasses of \texttt{Media}, each with its own attributes and actions.\\ \hline
+User, admin, employee, borrower & Classes & Abstract class \texttt{User} with the subclasses \texttt{Borrower}, \texttt{Employee} and \texttt{Admin}.\\ \hline
+Library, media collection & Class & \texttt{Library} stores and looks up the media items and users.\\ \hline
+Console interface, input, instruction, error & Classes & Presentation layer: \texttt{ConsoleUI}, \texttt{Menu} (one per role) and \texttt{InputValidator}.\\ \hline
+Role & Enumeration & Fixed set of values (Borrower, Employee, Admin): \texttt{UserRole}.\\ \hline
+Title, author, language, number of pages, year of publication, ISBN, director, genre, release year, duration, composer, singer, file type, publisher, supported platform, version, file size, host, guest, episode number, resolution, file format, date taken & Attributes & Plain data describing one media item. They belong to the media class they were listed for.\\ \hline
+Name, age, social security number & Attributes & Plain data describing a user. Stored in \texttt{User}.\\ \hline
+Rating & Attribute & A rating is only a score given by a borrower, so it is stored in \texttt{Media} (one score per borrower) and not as a class of its own.\\ \hline
+Details, action & Methods & Details are produced by \texttt{GetDetails()}; actions are methods or menu options.\\ \hline
+Digital platform & Discarded & It is the system itself, represented by the program as a whole.\\ \hline
+Personal information, rights & Discarded & Covered by the attributes of \texttt{User} and by the user roles.\\ \hline
+\end{longtable}
+}
+
+{\small
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.20\textwidth}|>{\raggedright\arraybackslash}p{0.36\textwidth}|>{\raggedright\arraybackslash}p{0.27\textwidth}|}
+\caption{Mapping of the verbs to methods and interfaces.}\label{tab:verbs}\\
+\hline
+\textbf{Verb(s)} & \textbf{Design element} & \textbf{Implemented by}\\ \hline
+\endfirsthead
+\hline
+\textbf{Verb(s)} & \textbf{Design element} & \textbf{Implemented by}\\ \hline
+\endhead
+\hline
+\endlastfoot
+Download & \texttt{IDownloadable.Download()} & \texttt{Media} (all types)\\ \hline
+Read & \texttt{IReadable.Read()} & \texttt{EBook}\\ \hline
+Watch & \texttt{IWatchable.Watch()} & \texttt{Movie}\\ \hline
+Play, listen & \texttt{IPlayable.Play()} (listening to audio is playing) & \texttt{Song}, \texttt{VideoGame}, \texttt{Podcast}\\ \hline
+Complete & \texttt{ICompletable.Complete()} & \texttt{VideoGame}, \texttt{Podcast}\\ \hline
+Execute & \texttt{IExecutable.Execute()} & \texttt{App}\\ \hline
+Display & \texttt{IDisplayable.Display()} & \texttt{Image}\\ \hline
+View, preview & \texttt{Media.GetDetails()} & All media classes\\ \hline
+Borrow & \texttt{IBorrowable.Borrow()}, called through \texttt{Borrower.Borrow()} & \texttt{Media}\\ \hline
+Rate & \texttt{IRatable.Rate()}, called through \texttt{Borrower.Rate()} & \texttt{Media}\\ \hline
+List, select & \texttt{Library.ListByType()}, \texttt{Library.FindMedia()} & \texttt{Library}\\ \hline
+Manage, add, remove (media) & \texttt{ICollectionManager.AddMedia()}, \texttt{RemoveMedia()} & \texttt{Employee} (\texttt{Admin} inherits)\\ \hline
+Manage, view, create, delete, update (users) & \texttt{IUserManager.ListUsers()}, \texttt{CreateUser()}, \texttt{DeleteUser()}, \texttt{UpdateUser()} & \texttt{Admin}\\ \hline
+Identify & \texttt{ConsoleUI.IdentifyRole()} & \texttt{ConsoleUI}\\ \hline
+Validate & \texttt{InputValidator.ReadInt()}, \texttt{ReadText()}, \ldots & \texttt{InputValidator}\\ \hline
+Guide, perform & \texttt{Menu.ShowOptions()}, \texttt{Menu.HandleChoice()} & \texttt{BorrowerMenu}, \texttt{EmployeeMenu}, \texttt{AdminMenu}\\ \hline
+Interact, share & No behaviour of their own; they describe the purpose of the platform. & ---\\ \hline
+\end{longtable}
+}
+
+% ---------------------------------------------------------------------
 \subsection{CRC cards}
+% ---------------------------------------------------------------------
 
+The CRC cards below were derived from the requirements and the verb-noun analysis. The interfaces (\texttt{IBorrowable}, \texttt{IPlayable}, \ldots) do not get cards of their own; they appear as collaborators of the classes that implement them. The cards of the concrete media classes only list what is specific to them, as the common behaviour belongs to \texttt{Media}.
+
+\bigskip
+\noindent
+\crccard{Media (abstract)}
+ {\crcitem{Store id and title}
+  \crcitem{Keep track of who has borrowed the item}
+  \crcitem{Allow borrowing}
+  \crcitem{Store ratings and calculate the average}
+  \crcitem{Only accept ratings from users who have borrowed the item}
+  \crcitem{Provide download}
+  \crcitem{Provide its details as text (abstract)}}
+ {\crcitem{Borrower}
+  \crcitem{Library}}
+\hfill
+\crccard{EBook}
+ {\crcitem{Store author, language, number of pages, year of publication and ISBN}
+  \crcitem{Allow the e-book to be read}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IReadable}}
+\par\medskip\noindent
+\crccard{Movie}
+ {\crcitem{Store director, genres, release year, language and duration}
+  \crcitem{Allow the movie to be watched}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IWatchable}}
+\hfill
+\crccard{Song}
+ {\crcitem{Store composer, singer, genre, file type, duration and language}
+  \crcitem{Allow the song to be played}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IPlayable}}
+\par\medskip\noindent
+\crccard{VideoGame}
+ {\crcitem{Store genre, publisher, release year and supported platforms}
+  \crcitem{Allow the game to be played}
+  \crcitem{Track whether the game has been completed}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IPlayable}
+  \crcitem{ICompletable}}
+\hfill
+\crccard{App}
+ {\crcitem{Store version, publisher, supported platforms and file size}
+  \crcitem{Allow the app to be executed}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IExecutable}}
+\par\medskip\noindent
+\crccard{Podcast}
+ {\crcitem{Store release year, hosts, guests, episode number and language}
+  \crcitem{Allow the episode to be listened to}
+  \crcitem{Track whether the episode has been completed}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IPlayable}
+  \crcitem{ICompletable}}
+\hfill
+\crccard{Image}
+ {\crcitem{Store resolution, file format, file size and date taken}
+  \crcitem{Allow the image to be displayed}
+  \crcitem{Provide its details}}
+ {\crcitem{Media}
+  \crcitem{IDisplayable}}
+\par\medskip\noindent
+\crccard{User (abstract)}
+ {\crcitem{Store name, age and social security number}
+  \crcitem{Update personal information}
+  \crcitem{Tell which role the user has}}
+ {\crcitem{UserRole}
+  \crcitem{Library}}
+\hfill
+\crccard{Borrower}
+ {\crcitem{Borrow media items}
+  \crcitem{Rate media items that have been borrowed}}
+ {\crcitem{Media}
+  \crcitem{IBorrowable}
+  \crcitem{IRatable}}
+\par\medskip\noindent
+\crccard{Employee}
+ {\crcitem{Add media items to the library}
+  \crcitem{Remove media items from the library}}
+ {\crcitem{Library}
+  \crcitem{Media}
+  \crcitem{ICollectionManager}}
+\hfill
+\crccard{Admin}
+ {\crcitem{Do everything an employee can}
+  \crcitem{View all users}
+  \crcitem{Create and delete users}
+  \crcitem{Update the personal information of users}}
+ {\crcitem{Employee}
+  \crcitem{Library}
+  \crcitem{User}
+  \crcitem{IUserManager}}
+\par\medskip\noindent
+\crccard{Library}
+ {\crcitem{Store all media items and users}
+  \crcitem{Add and remove media items}
+  \crcitem{Find a media item by id}
+  \crcitem{List media items by type}
+  \crcitem{Add, remove and find users}
+  \crcitem{Reject duplicates}}
+ {\crcitem{Media}
+  \crcitem{User}
+  \crcitem{CsvFileHandler}}
+\hfill
+\crccard{ConsoleUI}
+ {\crcitem{Start the program}
+  \crcitem{Ask the user to identify their role}
+  \crcitem{Create the menu that matches the role}
+  \crcitem{Show welcome and exit messages}}
+ {\crcitem{Menu}
+  \crcitem{Library}
+  \crcitem{UserRole}
+  \crcitem{InputValidator}}
+\par\medskip\noindent
+\crccard{Menu (abstract)}
+ {\crcitem{Run the menu loop until the user exits}
+  \crcitem{Show the options of the role}
+  \crcitem{Read a choice and execute it}
+  \crcitem{List media items by type}
+  \crcitem{Show results and error messages}}
+ {\crcitem{Library}
+  \crcitem{User}
+  \crcitem{InputValidator}}
+\hfill
+\crccard{BorrowerMenu}
+ {\crcitem{Offer the borrower actions: list, preview, borrow, rate and use an item}
+  \crcitem{Ask for the media-specific action}}
+ {\crcitem{Menu}
+  \crcitem{Borrower}
+  \crcitem{Media}}
+\par\medskip\noindent
+\crccard{EmployeeMenu}
+ {\crcitem{Offer adding and removing media items}
+  \crcitem{Collect the data of a new media item}}
+ {\crcitem{Menu}
+  \crcitem{Employee}
+  \crcitem{Media}}
+\hfill
+\crccard{AdminMenu}
+ {\crcitem{Offer the employee options and user management}
+  \crcitem{Collect the data of a new or updated user}}
+ {\crcitem{EmployeeMenu}
+  \crcitem{Admin}
+  \crcitem{User}}
+\par\medskip\noindent
+\crccard{InputValidator}
+ {\crcitem{Read numbers within a range}
+  \crcitem{Read non-empty text}
+  \crcitem{Check formats (e.g.\ social security number)}
+  \crcitem{Repeat the prompt until the input is valid}}
+ {\crcitem{Menu}
+  \crcitem{ConsoleUI}}
+\hfill
+\crccard{CsvFileHandler}
+ {\crcitem{Load media items and users from file}
+  \crcitem{Save media items and users to file}
+  \crcitem{Handle missing or corrupt files}}
+ {\crcitem{Library}
+  \crcitem{Media}
+  \crcitem{User}}
+\par
+
+% ---------------------------------------------------------------------
 \subsection{UML class diagram}
+% ---------------------------------------------------------------------
+
+The class diagram is split over two pages to keep it readable. Figure~\ref{fig:media} shows the media model and Figure~\ref{fig:system} shows users, library, console interface and data access. \texttt{Media} and \texttt{Borrower} appear in both figures (collapsed in the one where they are not the focus), which connects the two parts. The main design decisions are:
+
+\begin{itemize}
+  \item \textbf{Abstract base class for media.} \texttt{Media} holds the state and logic that all media share (id, title, borrowers, ratings, download). The seven media types are subclasses that add their own attributes and actions, so a new media type is just a new subclass (NFR1).
+  \item \textbf{Capability interfaces instead of deep inheritance.} Each verb from the analysis became a small interface (\texttt{IReadable}, \texttt{IWatchable}, \texttt{IPlayable}, \ldots). A class gets exactly the capabilities that fit it, e.g.\ \texttt{Podcast} is \texttt{IPlayable} and \texttt{ICompletable}, but not \texttt{IExecutable}. \texttt{IBorrowable}, \texttt{IRatable} and \texttt{IDownloadable} are implemented by \texttt{Media} because the specification allows all media to be borrowed, rated and downloaded.
+  \item \textbf{Rating rule in the domain.} \texttt{Media.Rate()} checks that the rating user has borrowed the item and throws an exception otherwise (FR6, NFR4).
+  \item \textbf{User hierarchy.} \texttt{Borrower} and \texttt{Employee} extend the abstract \texttt{User}; \texttt{Admin} extends \texttt{Employee} since an admin has all rights of an employee (FR13). Managing the collection and managing users are capabilities (\texttt{ICollectionManager}, \texttt{IUserManager}), which makes it possible to add new roles later (NFR2).
+  \item \textbf{Three layers.} The presentation layer (\texttt{ConsoleUI}, the menus and \texttt{InputValidator}) only depends on the domain layer, and the domain layer (media, users, \texttt{Library}) never touches the console (NFR5, NFR6). \texttt{CsvFileHandler} is the data access layer.
+  \item \textbf{One menu per role.} \texttt{AdminMenu} extends \texttt{EmployeeMenu} in the same way as \texttt{Admin} extends \texttt{Employee}, so users only see the actions their role allows (FR15).
+\end{itemize}
+
+Getters and setters (C\# properties), constructors and trivial helper methods are left out of the diagrams. Abstract classes and operations are written in italics, and the colours only group the elements: blue for media, cyan for presentation, green for domain, orange for data access, and yellow for interfaces.
+
+% ======================= Figure 1: media model =======================
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+% --- Media (abstract base class)
+\node[umlc, text width=5.3cm] (Media) at (12.5,9.4) {%
+  \umlstereo{abstract}\\\textbf{\textit{Media}}
+  \nodepart{second}
+  - id : int\\
+  - title : string\\
+  - borrowers : List\gen{Borrower}\\
+  - ratings : Dictionary\gen{Borrower, int}
+  \nodepart{third}
+  + AverageRating : double\\
+  + Borrow(borrower : Borrower) : void\\
+  + HasBorrowed(borrower : Borrower) : bool\\
+  + Rate(borrower : Borrower, score : int) : void\\
+  + Download() : void\\
+  + \textit{GetDetails() : string}};
+
+% --- Interfaces implemented by Media
+\node[umli, text width=4.5cm] (IBorrowable) at (7.2,13.6) {%
+  \umlstereo{interface}\\\textbf{IBorrowable}
+  \nodepart{second}
+  + Borrow(borrower : Borrower) : void\\
+  + HasBorrowed(borrower : Borrower) : bool};
+\node[umli, text width=4.5cm] (IRatable) at (12.5,13.6) {%
+  \umlstereo{interface}\\\textbf{IRatable}
+  \nodepart{second}
+  + AverageRating : double\\
+  + Rate(borrower : Borrower, score : int) : void};
+\node[umli, text width=2.6cm] (IDownloadable) at (17.6,13.6) {%
+  \umlstereo{interface}\\\textbf{IDownloadable}
+  \nodepart{second}
+  + Download() : void};
+
+\draw[real] (Media.north west) -- (IBorrowable.south);
+\draw[real] (Media.north) -- (IRatable.south);
+\draw[real] (Media.north east) -- (IDownloadable.south);
+
+% --- Collapsed Borrower (details in Figure 2)
+\node[umlcol, minimum width=2.4cm] (Borrower) at (22.6,9.9) {\textbf{Borrower}};
+\draw[assoc] ($(Media.east)+(0,0.5)$) -- node[mult, pos=0.07, above]{0..*} node[mult, midway, above]{borrowed by} node[mult, pos=0.93, above]{0..*} (Borrower.west);
+
+% --- Subclasses of Media
+\def\busy{6.5}
+\node[umlc, text width=3.1cm, anchor=north] (EBook) at (1.7,5.6) {%
+  \textbf{EBook}
+  \nodepart{second}
+  - author : string\\
+  - language : string\\
+  - numberOfPages : int\\
+  - yearOfPublication : int\\
+  - isbn : string
+  \nodepart{third}
+  + Read() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (Movie) at (5.3,5.6) {%
+  \textbf{Movie}
+  \nodepart{second}
+  - director : string\\
+  - genres : List\gen{string}\\
+  - releaseYear : int\\
+  - language : string\\
+  - duration : TimeSpan
+  \nodepart{third}
+  + Watch() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (Song) at (8.9,5.6) {%
+  \textbf{Song}
+  \nodepart{second}
+  - composer : string\\
+  - singer : string\\
+  - genre : string\\
+  - fileType : string\\
+  - duration : TimeSpan\\
+  - language : string
+  \nodepart{third}
+  + Play() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (Podcast) at (12.5,5.6) {%
+  \textbf{Podcast}
+  \nodepart{second}
+  - releaseYear : int\\
+  - hosts : List\gen{string}\\
+  - guests : List\gen{string}\\
+  - episodeNumber : int\\
+  - language : string\\
+  - isCompleted : bool
+  \nodepart{third}
+  + Play() : void\\
+  + Complete() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (VideoGame) at (16.1,5.6) {%
+  \textbf{VideoGame}
+  \nodepart{second}
+  - genre : string\\
+  - publisher : string\\
+  - releaseYear : int\\
+  - platforms : List\gen{string}\\
+  - isCompleted : bool
+  \nodepart{third}
+  + Play() : void\\
+  + Complete() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (App) at (19.7,5.6) {%
+  \textbf{App}
+  \nodepart{second}
+  - version : string\\
+  - publisher : string\\
+  - platforms : List\gen{string}\\
+  - fileSize : double
+  \nodepart{third}
+  + Execute() : void\\
+  + GetDetails() : string};
+\node[umlc, text width=3.1cm, anchor=north] (Image) at (23.3,5.6) {%
+  \textbf{Image}
+  \nodepart{second}
+  - resolution : string\\
+  - fileFormat : string\\
+  - fileSize : double\\
+  - dateTaken : DateTime
+  \nodepart{third}
+  + Display() : void\\
+  + GetDetails() : string};
+
+% --- Generalisation: subclasses -> Media (shared bus)
+\foreach \n/\x in {EBook/1.7, Movie/5.3, Song/8.9, Podcast/12.5, VideoGame/16.1, App/19.7, Image/23.3}{
+  \draw[line width=0.4pt] (\n.north) -- (\x,\busy);
+}
+\draw[line width=0.4pt] (1.7,\busy) -- (23.3,\busy);
+\draw[gen] (12.5,\busy) -- (Media.south);
+
+% --- Capability interfaces implemented by the subclasses
+\node[umli, text width=2.3cm, anchor=south] (IReadable) at (1.7,0) {%
+  \umlstereo{interface}\\\textbf{IReadable}
+  \nodepart{second} + Read() : void};
+\node[umli, text width=2.3cm, anchor=south] (IWatchable) at (5.3,0) {%
+  \umlstereo{interface}\\\textbf{IWatchable}
+  \nodepart{second} + Watch() : void};
+\node[umli, text width=2.3cm, anchor=south] (IPlayable) at (10.7,0) {%
+  \umlstereo{interface}\\\textbf{IPlayable}
+  \nodepart{second} + Play() : void};
+\node[umli, text width=2.6cm, anchor=south] (ICompletable) at (14.3,0) {%
+  \umlstereo{interface}\\\textbf{ICompletable}
+  \nodepart{second} + IsCompleted : bool\\ + Complete() : void};
+\node[umli, text width=2.3cm, anchor=south] (IExecutable) at (19.7,0) {%
+  \umlstereo{interface}\\\textbf{IExecutable}
+  \nodepart{second} + Execute() : void};
+\node[umli, text width=2.3cm, anchor=south] (IDisplayable) at (23.3,0) {%
+  \umlstereo{interface}\\\textbf{IDisplayable}
+  \nodepart{second} + Display() : void};
+
+\draw[real] (EBook.south) -- (IReadable.north);
+\draw[real] (Movie.south) -- (IWatchable.north);
+\draw[real] (Song.south) -- (IPlayable.north);
+\draw[real] (Podcast.south) -- (IPlayable.north);
+\draw[real] (VideoGame.south) -- (IPlayable.north);
+\draw[real] (Podcast.south) -- (ICompletable.north);
+\draw[real] (VideoGame.south) -- (ICompletable.north);
+\draw[real] (App.south) -- (IExecutable.north);
+\draw[real] (Image.south) -- (IDisplayable.north);
+
+\end{tikzpicture}}
+\caption{Class diagram, part 1: the media model. Solid arrows with a hollow head are inheritance, dashed arrows with a hollow head are interface implementation.}\label{fig:media}
+\end{figure}
+\end{landscape}
+
+% ======================= Figure 2: system =======================
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+% ---------------- Presentation layer ----------------
+\node[umlpres, text width=3.5cm] (InputValidator) at (2.0,12.8) {%
+  \textbf{InputValidator}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + ReadInt(prompt, min, max) : int\\
+  + ReadText(prompt) : string\\
+  + ReadSsn(prompt) : string\\
+  + Confirm(prompt) : bool};
+
+\node[umlpres, text width=3.9cm] (ConsoleUI) at (6.6,12.7) {%
+  \textbf{ConsoleUI}
+  \nodepart{second}
+  - library : Library\\
+  - validator : InputValidator
+  \nodepart{third}
+  + Start() : void\\
+  - IdentifyRole() : UserRole\\
+  - CreateMenu(user : User) : Menu};
+
+\node[umlpres, text width=4.1cm] (Menu) at (4.6,8.0) {%
+  \umlstereo{abstract}\\\textbf{\textit{Menu}}
+  \nodepart{second}
+  \# library : Library\\
+  \# user : User\\
+  \# validator : InputValidator
+  \nodepart{third}
+  + Run() : void\\
+  \# \textit{ShowOptions() : void}\\
+  \# \textit{HandleChoice(choice : int) : void}\\
+  \# ListMediaByType() : void};
+
+\node[umlpres, text width=3.9cm, anchor=north] (BorrowerMenu) at (2.2,5.4) {%
+  \textbf{BorrowerMenu}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + ShowOptions() : void\\
+  + HandleChoice(choice : int) : void\\
+  - ShowDetails() : void\\
+  - BorrowItem() : void\\
+  - RateItem() : void\\
+  - UseItem() : void};
+
+\node[umlpres, text width=3.9cm, anchor=north] (EmployeeMenu) at (6.6,5.4) {%
+  \textbf{EmployeeMenu}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + ShowOptions() : void\\
+  + HandleChoice(choice : int) : void\\
+  \# AddMedia() : void\\
+  \# RemoveMedia() : void};
+
+\node[umlpres, text width=3.9cm, anchor=north] (AdminMenu) at (6.6,1.9) {%
+  \textbf{AdminMenu}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + ShowOptions() : void\\
+  + HandleChoice(choice : int) : void\\
+  - ListUsers() : void\\
+  - CreateUser() : void\\
+  - DeleteUser() : void\\
+  - UpdateUser() : void};
+
+% ---------------- Data access layer ----------------
+\node[umlper, text width=4.4cm] (CsvFileHandler) at (11.6,13.0) {%
+  \textbf{CsvFileHandler}
+  \nodepart{second}
+  - mediaFile : string\\
+  - userFile : string
+  \nodepart{third}
+  + LoadMedia() : List\gen{Media}\\
+  + LoadUsers() : List\gen{User}\\
+  + SaveMedia(items : List\gen{Media}) : void\\
+  + SaveUsers(users : List\gen{User}) : void};
+
+% ---------------- Domain layer ----------------
+\node[umldom, text width=4.5cm] (Library) at (11.2,8.6) {%
+  \textbf{Library}
+  \nodepart{second}
+  - mediaItems : List\gen{Media}\\
+  - users : List\gen{User}\\
+  - nextMediaId : int
+  \nodepart{third}
+  + AddMedia(media : Media) : void\\
+  + RemoveMedia(id : int) : void\\
+  + FindMedia(id : int) : Media\\
+  + ListByType(type : Type) : List\gen{Media}\\
+  + AddUser(user : User) : void\\
+  + RemoveUser(ssn : string) : void\\
+  + FindUser(ssn : string) : User\\
+  + ListUsers() : List\gen{User}};
+
+\node[umlcol, minimum width=3.4cm] (Media) at (11.2,3.2) {%
+  \umlstereo{abstract}\\\textbf{\textit{Media}}\\ (see Figure~\ref{fig:media})};
+
+\node[umldom, text width=4.7cm] (User) at (20.6,11.4) {%
+  \umlstereo{abstract}\\\textbf{\textit{User}}
+  \nodepart{second}
+  - name : string\\
+  - age : int\\
+  - ssn : string
+  \nodepart{third}
+  + \textit{Role : UserRole}\\
+  + UpdateInfo(name : string, age : int) : void};
+
+\node[umldom, rectangle split parts=2, text width=2.3cm] (UserRole) at (24.9,11.4) {%
+  \umlstereo{enumeration}\\\textbf{UserRole}
+  \nodepart{second}
+  Borrower\\
+  Employee\\
+  Admin};
+
+\node[umldom, text width=4.5cm] (Borrower) at (16.0,7.0) {%
+  \textbf{Borrower}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + Role : UserRole\\
+  + Borrow(item : IBorrowable) : void\\
+  + Rate(item : IRatable, score : int) : void};
+
+\node[umldom, text width=3.8cm] (Employee) at (20.6,7.0) {%
+  \textbf{Employee}
+  \nodepart{second}
+  \# library : Library
+  \nodepart{third}
+  + Role : UserRole\\
+  + AddMedia(media : Media) : void\\
+  + RemoveMedia(id : int) : void};
+
+\node[umldom, text width=3.8cm] (Admin) at (20.6,2.6) {%
+  \textbf{Admin}
+  \nodepart{second} \relax
+  \nodepart{third}
+  + Role : UserRole\\
+  + ListUsers() : List\gen{User}\\
+  + CreateUser(user : User) : void\\
+  + DeleteUser(ssn : string) : void\\
+  + UpdateUser(ssn, name, age) : void};
+
+\node[umli, text width=3.8cm] (ICollectionManager) at (24.9,7.0) {%
+  \umlstereo{interface}\\\textbf{ICollectionManager}
+  \nodepart{second}
+  + AddMedia(media : Media) : void\\
+  + RemoveMedia(id : int) : void};
+
+\node[umli, text width=3.8cm] (IUserManager) at (24.9,2.6) {%
+  \umlstereo{interface}\\\textbf{IUserManager}
+  \nodepart{second}
+  + ListUsers() : List\gen{User}\\
+  + CreateUser(user : User) : void\\
+  + DeleteUser(ssn : string) : void\\
+  + UpdateUser(ssn, name, age) : void};
+
+% ---------------- Relationships ----------------
+% Presentation layer
+\draw[dep] (ConsoleUI.south) -- node[mult, right]{creates} (Menu.north east);
+\draw[assoc] (Menu.north west) -- node[mult, left]{reads input with} (InputValidator.south);
+\draw[assoc] (ConsoleUI.east) -- (Library.north west);
+\draw[assoc] (Menu.east) -- node[mult, pos=0.1, above]{1} node[mult, pos=0.5, above, sloped]{operates on} node[mult, pos=0.8, above]{1} (Library.west);
+
+% Menu inheritance (BorrowerMenu and EmployeeMenu share one arrow into Menu)
+\draw[line width=0.4pt] (BorrowerMenu.north) -- (2.2,5.9);
+\draw[line width=0.4pt] (EmployeeMenu.north) -- (6.6,5.9);
+\draw[line width=0.4pt] (2.2,5.9) -- (6.6,5.9);
+\draw[gen] (4.6,5.9) -- (Menu.south);
+\draw[gen] (AdminMenu.north) -- (EmployeeMenu.south);
+
+% Library (composition) and data access
+\draw[compo] (Library.south) -- node[mult, pos=0.9, right]{0..*} (Media.north);
+\draw[compo] (Library.east) -- node[mult, pos=0.93, above]{0..*} (User.west);
+\draw[dep] (Library.north) -- node[mult, right]{uses} (CsvFileHandler.south);
+
+% User hierarchy (Borrower and Employee share one arrow into User)
+\draw[line width=0.4pt] (Borrower.north) -- (16.0,9.0) -- (20.6,9.0);
+\draw[gen] (Employee.north) -- (User.south);
+\draw[gen] (Admin.north) -- (Employee.south);
+\draw[assoc] (User.east) -- node[mult, above]{role} (UserRole.west);
+\draw[real] (Employee.east) -- (ICollectionManager.west);
+\draw[real] (Admin.east) -- (IUserManager.west);
+
+% Borrower - Media
+\draw[assoc] (Media.east) -| node[mult, pos=0.12, above]{0..*} node[mult, pos=0.85, left]{0..*} (Borrower.south);
+
+% --- Legend
+\begin{scope}[shift={(12.5,0.3)}]
+  \node[umlcol, fill=cyan!18, minimum width=1.9cm, anchor=west] at (0,0) {Presentation};
+  \node[umlcol, fill=green!18, minimum width=1.9cm, anchor=west] at (2.1,0) {Domain};
+  \node[umlcol, fill=orange!25, minimum width=1.9cm, anchor=west] at (4.2,0) {Data access};
+  \node[umlcol, fill=yellow!30, minimum width=1.9cm, anchor=west] at (6.3,0) {Interface};
+\end{scope}
+
+\end{tikzpicture}}
+\caption{Class diagram, part 2: users, library, console interface and data access. Diamonds mark composition (the library owns its media items and users), plain arrows are associations and dashed open arrows are dependencies.}\label{fig:system}
+\end{figure}
+\end{landscape}
