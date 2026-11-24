@@ -12,4 +12,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Domain\Interfaces\" />
+    <Folder Include="Domain\Media\" />
+    <Folder Include="Domain\User\" />
+    <Folder Include="Persistence\" />
+    <Folder Include="Presentation\" />
+  </ItemGroup>
+
 </Project>
