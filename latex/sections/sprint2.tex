@@ -41,7 +41,7 @@ This sprint turns the program specification of Sønderborg's digital media platf
 
 \textbf{Scope.} The design covers the core of the specification: seven media types, three user categories, borrowing and rating, collection and user management, and a console interface that asks for the user's role on startup. Authentication, returning items, sorting and file persistence are left out.
 
-\section{Requirements}
+\subsection{Requirements}
 
 \small
 \renewcommand{\arraystretch}{1.2}
@@ -70,7 +70,7 @@ NFR4 & The program is a C\# console application. & Workshop\\ \hline
 \end{longtable}
 \normalsize
 
-\section{Verb-noun analysis}
+\subsection{Verb-noun analysis}
 
 Nouns are candidates for classes and attributes, verbs for methods and interfaces.
 
@@ -118,7 +118,7 @@ Identify, validate, guide & \texttt{IdentifyRole()}, input checks, role menus & 
 \end{longtable}
 \normalsize
 
-\section{CRC cards}
+\subsection{CRC cards}
 
 The seven media subclasses share one card, as their common behaviour belongs to \texttt{Media}.
 
@@ -176,7 +176,7 @@ The seven media subclasses share one card, as their common behaviour belongs to 
  {Library\\ User\\ UserRole}
 \par
 
-\section{UML class diagram}
+\subsection{UML class diagram}
 
 The diagram is split in two figures. Figure~\ref{fig:media} shows the media model and Figure~\ref{fig:system} shows users, library and console interface. The main design decisions are:
 
